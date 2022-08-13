@@ -2,8 +2,8 @@ import * as cdk from "@aws-cdk/core";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as sfn from "@aws-cdk/aws-stepfunctions";
 import * as tasks from "@aws-cdk/aws-stepfunctions-tasks";
-import * as sns from "@aws-cdk/aws-sns";
-import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
+// import * as sns from "@aws-cdk/aws-sns";
+// import * as subscriptions from "@aws-cdk/aws-sns-subscriptions";
 import dynamodb = require('@aws-cdk/aws-dynamodb');
 import apigw = require('@aws-cdk/aws-apigateway');
 
@@ -65,21 +65,21 @@ export class StateMachine extends cdk.Construct {
     const reservationFailed = new sfn.Fail(this, "Reservation Failed", {error: 'Job Failed'});
     const reservationSucceeded = new sfn.Succeed(this, "Reservation Successful!");
     
-    // SNS Topic, Subscription configuration
-
-    const topic = new  sns.Topic(this, 'Topic');
-    topic.addSubscription(new subscriptions.SmsSubscription('+11111111111'));
-    const snsNotificationFailure = new tasks.SnsPublish(this ,'SendingSMSFailure', {
-      topic:topic,
-      integrationPattern: sfn.IntegrationPattern.REQUEST_RESPONSE,
-      message: sfn.TaskInput.fromText('Your Travel Reservation Failed'),
-    });
-
-    const snsNotificationSuccess = new tasks.SnsPublish(this ,'SendingSMSSuccess', {
-      topic:topic,
-      integrationPattern: sfn.IntegrationPattern.REQUEST_RESPONSE,
-      message: sfn.TaskInput.fromText('Your Travel Reservation is Successful'),
-    });
+    // // SNS Topic, Subscription configuration
+    //
+    // const topic = new  sns.Topic(this, 'Topic');
+    // topic.addSubscription(new subscriptions.SmsSubscription('+11111111111'));
+    // const snsNotificationFailure = new tasks.SnsPublish(this ,'SendingSMSFailure', {
+    //   topic:topic,
+    //   integrationPattern: sfn.IntegrationPattern.REQUEST_RESPONSE,
+    //   message: sfn.TaskInput.fromText('Your Travel Reservation Failed'),
+    // });
+    //
+    // const snsNotificationSuccess = new tasks.SnsPublish(this ,'SendingSMSSuccess', {
+    //   topic:topic,
+    //   integrationPattern: sfn.IntegrationPattern.REQUEST_RESPONSE,
+    //   message: sfn.TaskInput.fromText('Your Travel Reservation is Successful'),
+    // });
 
 
     /**
@@ -90,7 +90,7 @@ export class StateMachine extends cdk.Construct {
         lambdaFunction: cancelFlightLambda,
         resultPath: '$.CancelFlightReservationResult',
       }).addRetry({maxAttempts:3})
-      .next(snsNotificationFailure) // retry this task a max of 3 times if it fails
+      // .next(snsNotificationFailure) // retry this task a max of 3 times if it fails
       .next(reservationFailed);
   
       const reserveFlight = new tasks.LambdaInvoke(this, 'ReserveFlight', {
@@ -158,7 +158,7 @@ export class StateMachine extends cdk.Construct {
       .next(processPayment)
       .next(confirmFlight)
       .next(confirmCarRental)
-      .next(snsNotificationSuccess)
+      // .next(snsNotificationSuccess)
       .next(reservationSucceeded)
   
    
