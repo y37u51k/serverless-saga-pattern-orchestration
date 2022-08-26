@@ -1,21 +1,29 @@
-const { DynamoDB } = require('aws-sdk');
+// const { DynamoDB } = require('aws-sdk');
+const aws = require('aws-sdk');
 export {};
 
-exports.handler = async function(event:any) {
-  console.log("request:", JSON.stringify(event, undefined, 2));
+exports.handler = async (event:any, context:any, callback:any) => {
+  const dynamo = new aws.DynamoDB({
+    region: 'ap-northeast-1'
+  });
 
-  let flightReservationID = hashIt(''+event.depart+event.arrive);
-  console.log("flightReservationID:",flightReservationID)
+  const stepfunctions = new aws.StepFunctions({
+    region: 'ap-northeast-1'
+  });
 
-  // Pass the parameter to fail this step 
-  if(event.run_type === 'failFlightsReservation'){
+  for(const record of event.Records){
+
+    console.log("request:", JSON.stringify(record.messageBody, undefined, 2));
+
+    let flightReservationID = hashIt(''+record.depart+record.arrive);
+    console.log("flightReservationID:",flightReservationID)
+
+    // Pass the parameter to fail this step
+    if(record.run_type === 'failFlightsReservation'){
       throw new Error('Failed to book the flights');
-  }
+    }
 
-  // create AWS SDK clients
-  const dynamo = new DynamoDB();
-
-  var params = {
+    var params = {
       TableName: process.env.TABLE_NAME,
       Item: {
         'pk' : {S: event.trip_id},
@@ -29,19 +37,40 @@ exports.handler = async function(event:any) {
         'transaction_status': {S: 'pending'}
       }
     };
-  
-  // Call DynamoDB to add the item to the table
-  let result = await dynamo.putItem(params).promise().catch((error: any) => {
-    throw new Error(error);
-  });
 
-  console.log('inserted flight reservation:');
-  console.log(result);
+    let result = dynamo.putItem(params, function (err:any, data:any) {
+      if (err) {
+        console.error(err.message);
+        throw new Error(err);
+      } else {
+        console.log('inserted flight reservation:');
+        console.log(data);
+      }
+    });
 
- 
-  return {
-    status: "ok",
-    booking_id: flightReservationID
+    // // Call DynamoDB to add the item to the table
+    // let result = await dynamo.putItem(params).promise().catch((error: any) => {
+    //   throw new Error(error);
+    // });
+
+    // Create response for calback to stepfunctions
+    const messageBody = JSON.parse(record.body);
+    const taskToken = messageBody.TaskToken;
+
+    const response = {
+      output: flightReservationID,
+      taskToken: taskToken
+    };
+
+    stepfunctions.sendTaskSuccess(response, (err:any, data:any) => {
+      if (err) {
+        console.error(err.message);
+        callback(err.message);
+        return;
+      }
+      console.log(data);
+      callback(null);
+    });
   }
 };
 

@@ -22,7 +22,7 @@ module.exports.handler = (event:any, context:any, callback:any) => {
 
     let input = {
         "trip_id": tripID,
-        "depart_city": "Detroit",
+        "depart_city": "HOGEHOGE",
         "depart_time": "2021-07-07T06:00:00.000Z",
         "arrive_city": "Frankfurt",
         "arrive_time": "2021-07-09T08:00:00.000Z",
